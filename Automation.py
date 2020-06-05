@@ -36,7 +36,7 @@ def InLineFunc(flag,myfile):
 #################################################################################
 
 def TakingPath():
-    path_to_file = input("please eneter path to file!")
+    path_to_file = input()
     path_to_file = path_to_file.replace("\\", "\\\\")
     file_name = input("please enter file name")
     file_name+= '.txt'
