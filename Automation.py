@@ -30,13 +30,13 @@ def RedingStandartTime(fileContent):
     return datetime.fromisoformat(time[0] + " " + time[1])
 
 
-def InLineFunc(flag, myfile):
+def InLineFunc(flag, myfile, not_standart_time=False):
 
     fileContent = myfile.readline()
     while fileContent.find(flag) == -1:
         fileContent = myfile.readline()
 
-    if flag != "EsmaUpdaterService End":
+    if not_standart_time:
         return ReadingNotStandartTime(fileContent)
     else:
         return RedingStandartTime(fileContent)
@@ -75,6 +75,7 @@ def AfterFunc(flag, myfile):
         for line in islice(myfile, 9, 10):
             fileContent = myfile.readline().split("INFO")
             time = fileContent[0].rsplit(" ")
+
             return datetime.fromisoformat(time[0] + " " + time[1])
     elif flag == "Validate unicost data":
         for line in islice(myfile, 9, 10):
@@ -85,22 +86,20 @@ def AfterFunc(flag, myfile):
     else:
         for line in islice(myfile, 2, 3):
             fileContent = myfile.readline()
-            return ReadingNotStandartTime(fileContent)
+        return ReadingNotStandartTime(fileContent)
 
 
 #################################################################################
 
 def BeforeFunc(flag, myfile, not_standart_reading=False):
+
     prev_line = myfile.readline()
     current_line = myfile.readline()
 
     while True:
         if current_line.find(flag) != -1:
             break
-        prev_line = myfile.readline()
-
-        if prev_line.find(flag) != -1:
-            break
+        prev_line = current_line
         current_line = myfile.readline()
 
     if (current_line.find(flag) == -1):
@@ -120,17 +119,16 @@ def BeforeFunc(flag, myfile, not_standart_reading=False):
 
 
 if __name__ == "__main__":
+
     print("Please enter path to SwedBank log File")
     path_to_swed = TakingPath()
-    print("Please enter path to Handels log File")
-    path_to_handels = TakingPath()
     print("*" * 20 + "SweedBank" + "*"*20)
     with open(path_to_swed, "r") as myfile:
         FindNumOfFiles(myfile)
         CalculateTime(AfterFunc("Populate unicost tables hub", myfile), BeforeFunc(
             "Remove duplicates for scores", myfile), info='Deltas to Hub')
         CalculateTime(AfterFunc("correct fields 00040 and 00060", myfile), InLineFunc(
-            "general_corrections.xml has finished running", myfile), info='Corrections')
+            "general_corrections.xml has finished running", myfile, True), info='Corrections')
         CalculateTime(AfterFunc("Populate unicost tables local", myfile), BeforeFunc(
             "Performance script", myfile), info='Deltas to Local')
         CalculateTime(AfterFunc("Validate unicost data", myfile), BeforeFunc(
@@ -139,16 +137,23 @@ if __name__ == "__main__":
         CalculateTime(AfterFunc("Export from unicost", myfile), BeforeFunc(
             "move files from output to backup", myfile), info='Export EMT')
         CalculateTime(AfterFunc("Load metadata", myfile), InLineFunc(
-            "EsmaUpdaterService End", myfile), info='ESMA')
+            "EsmaUpdaterService End", myfile, False), info='ESMA')
+
     print("*" * 20 + "Handels" + "*"*20)
-    with open(path_to_handels, "r") as myfile:
-        FindNumOfFiles(myfile)
-        CalculateTime(AfterFunc("Populate unicost tables hub", myfile), BeforeFunc(
-            "Remove duplicates for scores", myfile), info='Deltas to Hub')
-        CalculateTime(AfterFunc("Populate unicost tables local", myfile), BeforeFunc(
-            "Performance script", myfile), info='Deltas to Local')
-        CalculateTime(AfterFunc("Validate unicost data", myfile), BeforeFunc(
-            "move files from output to backup", myfile, not_standart_reading=True), info='Validator')
-        myfile.seek(0)
-        CalculateTime(AfterFunc("Export from unicost", myfile), BeforeFunc(
-            "Populate unicost tables local", myfile), info='Export EMT')
+
+    print("Please enter path to Handels log File")
+    path_to_handels = TakingPath()
+
+with open(path_to_handels, "r") as myfile:
+
+    FindNumOfFiles(myfile)
+    CalculateTime(AfterFunc("Populate unicost tables hub", myfile), BeforeFunc(
+        "Remove duplicates for scores", myfile), info='Deltas to Hub')
+    CalculateTime(AfterFunc("Populate unicost tables local", myfile), BeforeFunc(
+        "Performance script", myfile), info='Deltas to Local')
+    CalculateTime(AfterFunc("Validate unicost data", myfile), InLineFunc(
+        "create_static_view_indices.xml has finished running", myfile, True), info='Validator')
+    myfile.seek(0)
+
+    CalculateTime(AfterFunc("Export from unicost", myfile), BeforeFunc(
+        "move files from output to backup", myfile), info='Export EMT')
